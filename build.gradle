@@ -24,6 +24,10 @@ repositories {
     mavenLocal()
     jcenter()
 
+    flatDir {
+        dirs 'libs'
+    }
+
     maven { url 'https://jitpack.io' }//For KHTTP
 }
 

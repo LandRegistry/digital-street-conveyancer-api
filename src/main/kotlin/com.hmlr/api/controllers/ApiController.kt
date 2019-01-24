@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
 
+@Suppress("unused")
 @RestController
 @RequestMapping("/api")
 class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnection) : VaultQueryHelperConsumer() {
@@ -32,7 +33,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
      * Return the node's name
      */
     @GetMapping(value = "/me", produces = arrayOf(MediaType.APPLICATION_JSON_VALUE))
-    fun me() = mapOf("me" to myIdentity.name)
+    fun me() = mapOf("me" to myIdentity.toDTOWithName())
 
     /**
      * Returns all parties registered with the [NetworkMapService]. These names can be used to look up identities
@@ -42,7 +43,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
     fun peers() = mapOf("peers" to rpcOps.networkMapSnapshot()
             .asSequence()
             .filter { nodeInfo -> nodeInfo.legalIdentities.first() != myIdentity }
-            .map { it.legalIdentities.first().name.organisation }
+            .map { it.legalIdentities.first().toDTOWithName() }
             .toList())
 
     /**
@@ -125,6 +126,8 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
         if (myIdentity != agreement.buyerConveyancer && myIdentity != agreement.sellerConveyancer)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
 
+        input.signatory ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signatory is null!")
+
         if (myIdentity.toDTO() == input.signatory) {
             //start flow
             return when (input.action) {
@@ -145,7 +148,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
                 }
                 else -> return ResponseEntity.badRequest().body("Invalid action.")
             }
-        } else return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signatory.")
+        } else return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid signatory!")
     }
 
     /**

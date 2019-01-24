@@ -106,6 +106,23 @@ fun Party.toDTO() = X500NameDTO(
         this.name.commonName
 )
 
+data class X500NameWithNameDTO(
+        val x500: X500NameDTO,
+        val name: String
+)
+
+fun Party.toDTOWithName() = X500NameWithNameDTO(
+        X500NameDTO(
+            this.name.organisation,
+            this.name.locality,
+            this.name.country,
+            this.name.state,
+            this.name.organisationUnit,
+            this.name.commonName
+        ),
+        this.name.x500Principal.name
+)
+
 data class ConveyancerInstructionDTO(
         val title_number: String,
         val case_reference: String,
