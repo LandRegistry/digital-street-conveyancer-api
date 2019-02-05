@@ -18,6 +18,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 abstract class VaultQueryHelperConsumer {
 
@@ -79,29 +83,29 @@ abstract class VaultQueryHelperConsumer {
          */
         fun TitleTransferDTO.Companion.buildList(landTitleStateAndInstants: Map<String, List<StateAndInstant<LandTitleState>>>,
                                                  agreementStateAndInstants: Map<String, List<StateAndInstant<LandAgreementState>>>,
+                                                 paymentStateAndInstants: Map<String, List<StateAndInstant<PaymentConfirmationState>>>,
                                                  chargesAndRestrictionsStateAndInstants: Map<String, List<StateAndInstant<ProposedChargesAndRestrictionsState>>>,
                                                  requestIssuanceStateAndInstants: Map<String, List<StateAndInstant<RequestIssuanceState>>>,
-                                                 requestIssuanceNotFailedStateAndInstants: Map<String, List<StateAndInstant<RequestIssuanceState>>>,
-                                                 instructConveyancerStateAndInstants: Map<String, List<StateAndInstant<InstructConveyancerState>>>): List<TitleTransferDTO> {
+                                                 requestIssuanceNotFailedStateAndInstants: Map<String, List<StateAndInstant<RequestIssuanceState>>>): List<TitleTransferDTO> {
             val titleTransferDTOs = mutableListOf<TitleTransferDTO>()
 
             val titleNumbers = setOf<String>()
                     .union(landTitleStateAndInstants.keys)
                     .union(agreementStateAndInstants.keys)
+                    .union(paymentStateAndInstants.keys)
                     .union(chargesAndRestrictionsStateAndInstants.keys)
                     .union(requestIssuanceStateAndInstants.keys)
                     .union(requestIssuanceNotFailedStateAndInstants.keys)
-                    .union(instructConveyancerStateAndInstants.keys)
 
             for (titleNumber in titleNumbers) {
                 titleTransferDTOs.add(TitleTransferDTO.build(
                         titleNumber,
                         landTitleStateAndInstants.getOrDefault(titleNumber, listOf()),
                         agreementStateAndInstants.getOrDefault(titleNumber, listOf()),
+                        paymentStateAndInstants.getOrDefault(titleNumber, listOf()),
                         chargesAndRestrictionsStateAndInstants.getOrDefault(titleNumber, listOf()),
                         requestIssuanceStateAndInstants.getOrDefault(titleNumber, listOf()),
-                        requestIssuanceNotFailedStateAndInstants.getOrDefault(titleNumber, listOf()),
-                        instructConveyancerStateAndInstants.getOrDefault(titleNumber, listOf())
+                        requestIssuanceNotFailedStateAndInstants.getOrDefault(titleNumber, listOf())
                 ))
             }
 
@@ -114,26 +118,26 @@ abstract class VaultQueryHelperConsumer {
         fun TitleTransferDTO.Companion.build(titleNumber: String,
                                              landTitleStateAndInstants: List<StateAndInstant<LandTitleState>>,
                                              agreementStateAndInstants: List<StateAndInstant<LandAgreementState>>,
+                                             paymentStateAndInstants: List<StateAndInstant<PaymentConfirmationState>>,
                                              chargesAndRestrictionsStateAndInstants: List<StateAndInstant<ProposedChargesAndRestrictionsState>>,
                                              requestIssuanceStateAndInstants: List<StateAndInstant<RequestIssuanceState>>,
-                                             requestIssuanceNotFailedStateAndInstants: List<StateAndInstant<RequestIssuanceState>>,
-                                             instructConveyancerStateAndInstants: List<StateAndInstant<InstructConveyancerState>>): TitleTransferDTO {
+                                             requestIssuanceNotFailedStateAndInstants: List<StateAndInstant<RequestIssuanceState>>): TitleTransferDTO {
             //Build state statuses
             val stateStatuses = mutableListOf<Pair<String, StateSummaryDTO>>().apply {
                 addAll(StateSummaryDTO.buildPairs("land_title", landTitleStateAndInstants.map { it to it.state.status.name }))
                 addAll(StateSummaryDTO.buildPairs("sales_agreement", agreementStateAndInstants.map { it to it.state.status.name }))
+                addAll(StateSummaryDTO.buildPairs("payment", paymentStateAndInstants.map { it to it.state.status.name }))
                 addAll(StateSummaryDTO.buildPairs("proposed_charges_and_restrictions", chargesAndRestrictionsStateAndInstants.map { it to it.state.status.name }))
                 addAll(StateSummaryDTO.buildPairs("request_issuance", requestIssuanceStateAndInstants.map { it to it.state.status.name }))
-                addAll(StateSummaryDTO.buildPairs("instruct_conveyancer", instructConveyancerStateAndInstants.map { it to "instructed_conveyancer" }))
             }.toMap()
 
             val landTitleStateAndInstant = landTitleStateAndInstants.firstOrNull()
             val agreementStateAndInstant = agreementStateAndInstants.firstOrNull()
+            val paymentStateAndInstant = paymentStateAndInstants.firstOrNull()
             val chargesAndRestrictionsStateAndInstant = chargesAndRestrictionsStateAndInstants.firstOrNull()
 
             //Build status
             val status: String = when {
-                instructConveyancerStateAndInstants.firstOrNull() != null -> "instructed_conveyancer"
                 run {
                     requestIssuanceNotFailedStateAndInstants.firstOrNull()?.state?.status?.name?.toLowerCase() == "pending"
                 } -> "request_issuance_pending"
@@ -160,11 +164,17 @@ abstract class VaultQueryHelperConsumer {
                     agreementStateAndInstant?.state?.status?.name?.toLowerCase() == "approved"
                 } -> "sales_agreement_approved"
                 run {
+                    paymentStateAndInstant?.state?.status?.name?.toLowerCase() == "confirm_payment_received_in_escrow"
+                } -> "payment_received_in_escrow"
+                run {
                     agreementStateAndInstant?.state?.status?.name?.toLowerCase() == "signed"
                 } -> "sales_agreement_seller_party_signed"
                 run {
                     agreementStateAndInstant?.state?.status?.name?.toLowerCase() == "completed"
                 } -> "sales_agreement_completed"
+                run {
+                    paymentStateAndInstant?.state?.status?.name?.toLowerCase() == "confirm_payment_received_in_escrow"
+                } -> "payment_received_in_escrow"
                 run {
                     landTitleStateAndInstant?.state?.status?.name?.toLowerCase() == "transferred"
                 } -> "land_title_transferred"
@@ -172,10 +182,48 @@ abstract class VaultQueryHelperConsumer {
                     chargesAndRestrictionsStateAndInstant?.state?.status?.name?.toLowerCase() == "issued" &&
                             landTitleStateAndInstant == null
                 } -> "land_title_not_yet_issued"
+                run {
+                    paymentStateAndInstant?.state?.status?.name?.toLowerCase() == "issued"
+                } -> "payment_issued"
+                run {
+                    paymentStateAndInstant?.state?.status?.name?.toLowerCase() == "request_for_payment"
+                } -> "payment_request_for_payment"
+                run {
+                    paymentStateAndInstant?.state?.status?.name?.toLowerCase() == "confirm_funds_released"
+                } -> "payment_funds_released"
                 else -> "ERROR"
             }
 
             //Build DTO
+            var salesAgreement = if (agreementStateAndInstant == null || agreementStateAndInstant.state.status.name.toLowerCase() == "transferred") null else {
+                val referencedPaymentState = paymentStateAndInstants.first { it.state.landAgreementStateLinearId == agreementStateAndInstant.state.linearId.toString() }
+                val paymentSettler = referencedPaymentState.state.settlingParty
+                agreementStateAndInstant.state.toDTO(paymentSettler, agreementStateAndInstant.instant?.toLocalDateTime())
+            }
+
+            // This is because the Payment UI needs access to the buyer and buyer conveyancer details
+            // (which the payment state has), however there is sub object to display that data
+            // in the current TitleTransferDTO. Instead, in the essence of time, we are just bashing
+            // the payment state data into the sales agreement sub object.
+            if (salesAgreement == null && paymentStateAndInstant != null) salesAgreement = SalesAgreementDTO(
+                    paymentStateAndInstant.state.buyer.toDTO(),
+                    paymentStateAndInstant.state.buyerConveyancer.toDTO(),
+                    LocalDate.ofEpochDay(0),
+                    LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
+                    0.0,
+                    BigDecimal.ZERO,
+                    "GBP",
+                    BigDecimal.ZERO,
+                    "GBP",
+                    null,
+                    null,
+                    BigDecimal.ZERO,
+                    "GBP",
+                    "full",
+                    paymentStateAndInstant.state.settlingParty.toDTO(),
+                    paymentStateAndInstant.instant?.toLocalDateTime()
+            )
+
             return TitleTransferDTO(
                     title_number = titleNumber,
                     title = if (landTitleStateAndInstant == null) null else TitleDTO(
@@ -202,9 +250,7 @@ abstract class VaultQueryHelperConsumer {
                             chargesAndRestrictionsStateAndInstant.state.charges.map { it.toDTO() },
                             chargesAndRestrictionsStateAndInstant.state.restrictions.map { it.toDTO() }
                     ),
-                    sales_agreement = if (agreementStateAndInstant == null || agreementStateAndInstant.state.status.name.toLowerCase() == "transferred") null else {
-                        agreementStateAndInstant.state.toDTO(agreementStateAndInstant.instant?.toLocalDateTime())
-                    },
+                    sales_agreement = salesAgreement,
                     states = stateStatuses,
                     status = status
             )
@@ -216,14 +262,14 @@ abstract class VaultQueryHelperConsumer {
         fun TitleTransferDTO.Companion.build(vaultQueryHelperConsumer: VaultQueryHelperConsumer, titleNumber: String): TitleTransferDTO? {
             //Get states and instants
             val landTitleStateAndInstants: List<StateAndInstant<LandTitleState>> = vaultQueryHelperConsumer.getStatesBy { it.state.data.titleID == titleNumber }
-            val instructConveyancerStateAndInstants: List<StateAndInstant<InstructConveyancerState>> = vaultQueryHelperConsumer.getStatesBy { it.state.data.titleID == titleNumber }
             val requestIssuanceStateAndInstants: List<StateAndInstant<RequestIssuanceState>> = vaultQueryHelperConsumer.getStatesBy { it.state.data.titleID == titleNumber }
+            val paymentStateAndInstants: List<StateAndInstant<PaymentConfirmationState>> = vaultQueryHelperConsumer.getStatesBy { it.state.data.titleID == titleNumber }
 
             //Get title number
             val stateTitleNumber = when {
                 landTitleStateAndInstants.firstOrNull() != null -> landTitleStateAndInstants.first().state.titleID
                 requestIssuanceStateAndInstants.firstOrNull() != null -> requestIssuanceStateAndInstants.first().state.titleID
-                instructConveyancerStateAndInstants.firstOrNull() != null -> instructConveyancerStateAndInstants.first().state.titleID
+                paymentStateAndInstants.firstOrNull() != null -> paymentStateAndInstants.first().state.titleID
                 else -> null
             }
 
@@ -242,10 +288,10 @@ abstract class VaultQueryHelperConsumer {
                     stateTitleNumber,
                     landTitleStateAndInstants,
                     agreementStateAndInstants,
+                    paymentStateAndInstants,
                     chargesAndRestrictionsStateAndInstants,
                     requestIssuanceStateAndInstants,
-                    requestIssuanceNotFailedStateAndInstants,
-                    instructConveyancerStateAndInstants
+                    requestIssuanceNotFailedStateAndInstants
             )
         }
 
@@ -255,7 +301,6 @@ abstract class VaultQueryHelperConsumer {
         fun TitleTransferDTO.Companion.buildList(vaultQueryHelperConsumer: VaultQueryHelperConsumer): List<TitleTransferDTO> {
             //Get states and instants
             val landTitleStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<LandTitleState> { it.state.titleID }
-            val instructConveyancerStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<InstructConveyancerState> { it.state.titleID }
             val requestIssuanceStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<RequestIssuanceState> { it.state.titleID }
             val requestIssuanceNotFailedStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<RequestIssuanceState>(
                     {
@@ -265,15 +310,16 @@ abstract class VaultQueryHelperConsumer {
                     { it.state.titleID }
             )
             val agreementStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<LandAgreementState> { it.state.titleID }
+            val paymentStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<PaymentConfirmationState> { it.state.titleID }
             val chargesAndRestrictionsStateAndInstantsFilterPair = vaultQueryHelperConsumer.getStatesMap<ProposedChargesAndRestrictionsState> { it.state.titleID }
 
             return TitleTransferDTO.buildList(
                     landTitleStateAndInstantsFilterPair,
                     agreementStateAndInstantsFilterPair,
+                    paymentStateAndInstantsFilterPair,
                     chargesAndRestrictionsStateAndInstantsFilterPair,
                     requestIssuanceStateAndInstantsFilterPair,
-                    requestIssuanceNotFailedStateAndInstantsFilterPair,
-                    instructConveyancerStateAndInstantsFilterPair
+                    requestIssuanceNotFailedStateAndInstantsFilterPair
             )
         }
 

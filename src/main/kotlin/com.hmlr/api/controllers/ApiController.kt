@@ -51,35 +51,37 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
      */
     @PostMapping(value = "/titles/{title-number}",
             produces = arrayOf(MediaType.APPLICATION_JSON_VALUE))
-    fun requestTitle(@PathVariable("title-number") titleNumber: String): ResponseEntity<Any?> {
+    fun requestTitle(@PathVariable("title-number") titleNumber: String, @RequestBody input: TitleOwnerDTO): ResponseEntity<Any?> {
         logger.info("POST /titles/$titleNumber")
 
-        val requestIssuanceState = vaultQueryHelper {
-            //Get details of title
-            val conveyancerInstruction: StateAndInstant<InstructConveyancerState>? = getStateBy { it.state.data.titleID == titleNumber }
+            //Get title issuer
+        val hmlrParty = X500NameDTO(
+                organisation = System.getenv("HMLR_PARTY_ORGANISATION")!!,
+                locality = System.getenv("HMLR_PARTY_LOCALITY")!!,
+                country = System.getenv("HMLR_PARTY_COUNTRY")!!,
+                state = System.getenv("HMLR_PARTY_STATE"),
+                organisational_unit = System.getenv("HMLR_PARTY_ORGANISATIONAL_UNIT"),
+                common_name = System.getenv("HMLR_PARTY_COMMON_NAME")
+        ).toWellKnownParty() ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("HMLR party information is invalid.")
 
-            //Return 404 if null
-            conveyancerInstruction ?: return ResponseEntity.notFound().build()
-
-            //Build state
-            conveyancerInstruction.state.run {
-                RequestIssuanceState(
-                        titleID,
-                        titleIssuer,
-                        conveyancer,
-                        user,
-                        RequestIssuanceStatus.PENDING,
-                        linearId.toString()
-                )
-            }
-        }
+        //Build state
+        val requestIssuanceState = RequestIssuanceState(
+                titleNumber,
+                hmlrParty,
+                myIdentity,
+                input.owner.toCustomParty(
+                        confirmationOfIdentity = true,
+                        publicKey = KeyUtils(KeyUtils.DEFAULT_KEY_PROPERTIES_FILE).readPublicKey("seller"),
+                        signature = null
+                ),
+                RequestIssuanceStatus.PENDING
+        )
 
         //start flow and return response
         return responseEntityFromFlowHandle {
             it.startFlowDynamic(
                     RequestIssuanceFlow::class.java,
-                    requestIssuanceState,
-                    requestIssuanceState.instructionStateLinearID
+                    requestIssuanceState
             )
         }
     }
@@ -98,8 +100,13 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
             //Return 404 if null
             agreementStateAndInstant ?: return ResponseEntity.notFound().build()
 
+            //Get payment settler
+            val paymentStateAndInstants: List<StateAndInstant<PaymentConfirmationState>> = getStatesBy { it.state.data.titleID == titleNumber }
+            val referencedPaymentState = paymentStateAndInstants.first { it.state.landAgreementStateLinearId == agreementStateAndInstant.state.linearId.toString() }
+            val paymentSettler = referencedPaymentState.state.settlingParty
+
             //Build the DTO
-            val salesAgreementDTO = agreementStateAndInstant.state.toDTO(agreementStateAndInstant.instant?.toLocalDateTime())
+            val salesAgreementDTO = agreementStateAndInstant.state.toDTO(paymentSettler, agreementStateAndInstant.instant?.toLocalDateTime())
 
             //Return the DTO
             return ResponseEntity.ok().body(salesAgreementDTO)
@@ -184,7 +191,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
 
             //Get buyer conveyancer party
             val buyerConveyancerParty = input.buyer_conveyancer.toWellKnownParty()
-                    ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Buyer conveyancer party information is invalid.")
+                    ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Buyer conveyancer party information is invalid.")//Get buyer conveyancer party
 
             //Build state
             landTitle.state.run {
@@ -213,16 +220,24 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
                             else -> return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Title guarantee is invalid.")
                         },
                         AgreementStatus.CREATED,
-                        false
+                        false,
+                        ""
                 )
             }
+        }
+
+        val paymentSettlerParty = vaultQueryHelper {
+            //Get payment settler party
+            input.payment_settler.toWellKnownParty()
+                    ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Payment settler party information is invalid.")
         }
 
         return responseEntityFromFlowHandle {
             it.startFlowDynamic(
                     DraftAgreementFlow::class.java,
                     agreementState,
-                    agreementState.buyerConveyancer
+                    agreementState.buyerConveyancer,
+                    paymentSettlerParty
             )
         }
     }

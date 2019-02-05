@@ -88,4 +88,19 @@ task runSpringServer(type: JavaExec) {
         environment "CONFIG_RPC_PASSWORD", findProperty('nodePassword')
         environment "CASE_MANAGEMENT_API_URL", findProperty("caseManagementApiUrl")
     }
+
+    if (project.hasProperty("hmlrPartyOrganisation") &&
+            project.hasProperty("hmlrPartyLocality") &&
+            project.hasProperty("hmlrPartyCountry")) {
+        environment "HMLR_PARTY_ORGANISATION", findProperty("hmlrPartyOrganisation")
+        environment "HMLR_PARTY_LOCALITY", findProperty("hmlrPartyLocality")
+        environment "HMLR_PARTY_COUNTRY", findProperty("hmlrPartyCountry")
+        if (project.hasProperty("hmlrPartyState")) environment "HMLR_PARTY_STATE", findProperty("hmlrPartyState")
+        if (project.hasProperty("hmlrPartyOrganisationalUnit")) environment "HMLR_PARTY_ORGANISATIONAL_UNIT", findProperty("hmlrPartyOrganisationalUnit")
+        if (project.hasProperty("hmlrPartyCommonName")) environment "HMLR_PARTY_COMMON_NAME", findProperty("hmlrPartyCommonName")
+    } else {
+        environment "HMLR_PARTY_ORGANISATION", "HMLR"
+        environment "HMLR_PARTY_LOCALITY", "Plymouth"
+        environment "HMLR_PARTY_COUNTRY", "GB"
+    }
 }

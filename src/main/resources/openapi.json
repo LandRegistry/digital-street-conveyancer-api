@@ -84,6 +84,17 @@
             "$ref": "#/components/parameters/TitleNumber"
           }
         ],
+        "requestBody": {
+          "description": "Owner to request for",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TitleOwner"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Title issuance has been successfully requested",
@@ -524,6 +535,16 @@
           }
         }
       },
+      "TitleOwner": {
+        "properties": {
+          "title_number": {
+            "$ref": "#/components/schemas/TitleTransfer/properties/title_number"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Owner"
+          }
+        }
+      },
       "SalesAgreement": {
         "required": [
           "buyer",
@@ -537,7 +558,8 @@
           "deposit_currency_code",
           "balance",
           "balance_currency_code",
-          "guarantee"
+          "guarantee",
+          "payment_settler"
         ],
         "properties": {
           "buyer": {
@@ -612,6 +634,9 @@
               "limited"
             ],
             "example": "full"
+          },
+          "payment_settler": {
+            "$ref": "#/components/schemas/X500"
           },
           "latest_update_date": {
             "type": "string",
