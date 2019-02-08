@@ -1,5 +1,6 @@
 package com.hmlr.api.controllers
 
+import com.hmlr.api.SMSDispatcher
 import com.hmlr.api.common.VaultQueryHelperConsumer
 import com.hmlr.api.common.models.*
 import com.hmlr.api.keyutils.KeyUtils
@@ -45,6 +46,29 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
             .filter { nodeInfo -> nodeInfo.legalIdentities.first() != myIdentity }
             .map { it.legalIdentities.first().toDTOWithName() }
             .toList())
+
+    /**
+     * Non-common DTO for [yotiSigninRequest]'s request body.
+     */
+    data class YotiSignRequestDTO(
+            val client_phone_number: String,
+            val client_full_name: String,
+            val user_callback_url: String
+    )
+
+    /**
+     * Requests a citizen to sign into Yoti
+     */
+    @PostMapping(value = "/yoti-signin-request",
+            consumes = arrayOf(MediaType.APPLICATION_JSON_VALUE),
+            produces = arrayOf(MediaType.APPLICATION_JSON_VALUE))
+    fun yotiSigninRequest(@RequestBody input: YotiSignRequestDTO): ResponseEntity<Any?> {
+        logger.info("POST /yoti-signin-request")
+
+        val result = SMSDispatcher.sendSMSYotiSignRequest(input.client_phone_number, input.client_full_name, input.user_callback_url)
+
+        return ResponseEntity.ok().body("{\"result\":$result}")
+    }
 
     /**
      * Request a title to be issued to the ledger

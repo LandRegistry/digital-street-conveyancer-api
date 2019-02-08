@@ -28,7 +28,6 @@ repositories {
         dirs 'libs'
     }
 
-    maven { url 'https://jitpack.io' }//For KHTTP
 }
 
 dependencies {
@@ -47,7 +46,7 @@ dependencies {
     compile "com.hmlr:cordapp-flows:-SNAPSHOT"
     compile "com.hmlr:cordapp-common:-SNAPSHOT"
 
-    compile "com.github.jkcclemens:khttp:-SNAPSHOT"
+    compile "khttp:khttp:0.1.0"
 }
 
 compileKotlin {
@@ -71,8 +70,7 @@ task runSpringServer(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'com.hmlr.api.ServerKt'
 
-    if (project.hasProperty("serverPort"))
-    {
+    if (project.hasProperty("serverPort")) {
         environment "server.port", findProperty('serverPort')
     }
 
@@ -80,8 +78,7 @@ task runSpringServer(type: JavaExec) {
             project.hasProperty("nodePort") &&
             project.hasProperty("nodeUsername") &&
             project.hasProperty("nodePassword") &&
-            project.hasProperty("caseManagementApiUrl"))
-    {
+            project.hasProperty("caseManagementApiUrl")) {
         environment "CONFIG_RPC_HOST", findProperty('nodeIP')
         environment "CONFIG_RPC_PORT", findProperty('nodePort')
         environment "CONFIG_RPC_USERNAME", findProperty('nodeUsername')
@@ -103,4 +100,14 @@ task runSpringServer(type: JavaExec) {
         environment "HMLR_PARTY_LOCALITY", "Plymouth"
         environment "HMLR_PARTY_COUNTRY", "GB"
     }
+
+    if (project.hasProperty("twilioAccountSid") &&
+            project.hasProperty("twilioAuthToken") &&
+            project.hasProperty("twilioPhoneNumber")) {
+        environment "TWILIO_ACCOUNT_SID", findProperty('twilioAccountSid')
+        environment "TWILIO_AUTH_TOKEN", findProperty('twilioAuthToken')
+        environment "TWILIO_PHONE_NUMBER", findProperty('twilioPhoneNumber')
+    }
+    if (project.hasProperty("uiUrlAgreementSign")) environment "UI_URL_AGREEMENT_SIGN", findProperty('uiUrlAgreementSign')
+    if (project.hasProperty("uiUrlTitleTransferred")) environment "UI_URL_TITLE_TRANSFERRED", findProperty('uiUrlTitleTransferred')
 }
