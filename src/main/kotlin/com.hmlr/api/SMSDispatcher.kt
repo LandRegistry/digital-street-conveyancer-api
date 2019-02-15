@@ -43,7 +43,15 @@ object SMSDispatcher {
             return logErrorAndFalse("Phone number '$recipientPhoneNumber' is not in international E.164 format! Not sending SMS.")
         }
 
-        val body = template.templateText.replace("%([0-9])".toRegex(RegexOption.MULTILINE)) { match ->
+        val templateText = template.templateText.let {
+            val isTrialVar = System.getenv("TWILIO_IS_TRIAL") ?: return@let it
+            when (isTrialVar.toLowerCase()) {
+                "1", "true", "yes", "y" -> "\n$it"
+                else -> it
+            }
+        }
+
+        val body = templateText.replace("%([0-9])".toRegex(RegexOption.MULTILINE)) { match ->
             val index = match.groupValues[1].toInt()
             templateInfills.getOrElse(index) { match.value }
         }
