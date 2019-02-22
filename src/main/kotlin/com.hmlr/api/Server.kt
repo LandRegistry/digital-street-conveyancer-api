@@ -25,6 +25,9 @@ fun main(args: Array<String>) {
     require(System.getenv("HMLR_PARTY_ORGANISATION") != null) { "HMLR_PARTY_ORGANISATION env var was not set." }
     require(System.getenv("HMLR_PARTY_LOCALITY") != null) { "HMLR_PARTY_LOCALITY env var was not set." }
     require(System.getenv("HMLR_PARTY_COUNTRY") != null) { "HMLR_PARTY_COUNTRY env var was not set." }
+    require(System.getenv("HMRC_PARTY_ORGANISATION") != null) { "HMRC_PARTY_ORGANISATION env var was not set." }
+    require(System.getenv("HMRC_PARTY_LOCALITY") != null) { "HMRC_PARTY_LOCALITY env var was not set." }
+    require(System.getenv("HMRC_PARTY_COUNTRY") != null) { "HMRC_PARTY_COUNTRY env var was not set." }
     require(System.getenv("UI_URL_AGREEMENT_SIGN") != null) { "UI_URL_AGREEMENT_SIGN env var was not set." }
     require(System.getenv("UI_URL_TITLE_TRANSFERRED") != null) { "UI_URL_TITLE_TRANSFERRED env var was not set." }
 

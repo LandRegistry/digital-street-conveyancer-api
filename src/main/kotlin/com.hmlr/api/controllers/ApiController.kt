@@ -78,7 +78,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
     fun requestTitle(@PathVariable("title-number") titleNumber: String, @RequestBody input: TitleOwnerDTO): ResponseEntity<Any?> {
         logger.info("POST /titles/$titleNumber")
 
-            //Get title issuer
+        //Get title issuer
         val hmlrParty = X500NameDTO(
                 organisation = System.getenv("HMLR_PARTY_ORGANISATION")!!,
                 locality = System.getenv("HMLR_PARTY_LOCALITY")!!,
@@ -88,10 +88,21 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
                 common_name = System.getenv("HMLR_PARTY_COMMON_NAME")
         ).toWellKnownParty() ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("HMLR party information is invalid.")
 
+        //Get HMRC party
+        val hmrcParty = X500NameDTO(
+                organisation = System.getenv("HMRC_PARTY_ORGANISATION")!!,
+                locality = System.getenv("HMRC_PARTY_LOCALITY")!!,
+                country = System.getenv("HMRC_PARTY_COUNTRY")!!,
+                state = System.getenv("HMRC_PARTY_STATE"),
+                organisational_unit = System.getenv("HMRC_PARTY_ORGANISATIONAL_UNIT"),
+                common_name = System.getenv("HMRC_PARTY_COMMON_NAME")
+        ).toWellKnownParty() ?: return ResponseEntity.status(HttpStatus.NOT_FOUND).body("HMRC party information is invalid.")
+
         //Build state
         val requestIssuanceState = RequestIssuanceState(
                 titleNumber,
                 hmlrParty,
+                hmrcParty,
                 myIdentity,
                 input.owner.toCustomParty(
                         confirmationOfIdentity = true,
@@ -245,6 +256,7 @@ class ApiController(@Suppress("CanBeParameter") private val rpc: NodeRPCConnecti
                         },
                         AgreementStatus.CREATED,
                         false,
+                        null,
                         ""
                 )
             }

@@ -210,7 +210,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SalesAgreement"
+                "$ref": "#/components/schemas/SalesAgreementRequest"
               }
             }
           }
@@ -545,7 +545,7 @@
           }
         }
       },
-      "SalesAgreement": {
+      "SalesAgreementRequest": {
         "required": [
           "buyer",
           "buyer_conveyancer",
@@ -642,6 +642,22 @@
             "type": "string",
             "format": "date-time",
             "example": "2018-11-07T10:25:29+00:00"
+          }
+        }
+      },
+      "SalesAgreement": {
+        "properties": {
+          "sdlt": {
+            "type": "number",
+            "format": "double",
+            "example": 1125.01,
+            "readOnly": true
+          },
+          "sdlt_currency_code": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "example": "GBP",
+            "readOnly": true
           }
         }
       },

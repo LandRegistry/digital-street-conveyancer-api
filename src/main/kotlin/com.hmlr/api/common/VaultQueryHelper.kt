@@ -217,6 +217,8 @@ abstract class VaultQueryHelperConsumer {
                     BigDecimal.ZERO,
                     "GBP",
                     "full",
+                    null,
+                    null,
                     paymentStateAndInstant.state.settlingParty.toDTO(),
                     paymentStateAndInstant.instant?.toLocalDateTime()
             )

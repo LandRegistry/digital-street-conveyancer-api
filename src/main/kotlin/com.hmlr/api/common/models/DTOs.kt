@@ -113,12 +113,12 @@ data class X500NameWithNameDTO(
 
 fun Party.toDTOWithName() = X500NameWithNameDTO(
         X500NameDTO(
-            this.name.organisation,
-            this.name.locality,
-            this.name.country,
-            this.name.state,
-            this.name.organisationUnit,
-            this.name.commonName
+                this.name.organisation,
+                this.name.locality,
+                this.name.country,
+                this.name.state,
+                this.name.organisationUnit,
+                this.name.commonName
         ),
         this.name.x500Principal.name
 )
@@ -143,8 +143,8 @@ fun Charge.toDTO() = ChargeDTO(
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, visible = true, property = "restriction_type")
 @JsonSubTypes(
-    JsonSubTypes.Type(value = RestrictionDTO::class, name = RestrictionDTO.RESTRICTION_TYPE),
-    JsonSubTypes.Type(value = ChargeRestrictionDTO::class, name = ChargeRestrictionDTO.RESTRICTION_TYPE)
+        JsonSubTypes.Type(value = RestrictionDTO::class, name = RestrictionDTO.RESTRICTION_TYPE),
+        JsonSubTypes.Type(value = ChargeRestrictionDTO::class, name = ChargeRestrictionDTO.RESTRICTION_TYPE)
 )
 open class RestrictionDTO(
         val restriction_id: String,
@@ -226,7 +226,7 @@ fun Restriction.toDTO(): RestrictionDTO {
                         else -> null
                     }
                 } else null,
-                LocalDateTime.ofEpochSecond(0,0, ZoneOffset.UTC),
+                LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
                 this.charge.toDTO()
         )
         else -> RestrictionDTO(
@@ -241,7 +241,7 @@ fun Restriction.toDTO(): RestrictionDTO {
                         else -> null
                     }
                 } else null,
-                LocalDateTime.ofEpochSecond(0,0, ZoneOffset.UTC)
+                LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC)
         )
     }
 }
@@ -277,6 +277,8 @@ data class SalesAgreementDTO(
         val balance: BigDecimal,
         val balance_currency_code: String,
         val guarantee: String,
+        val sdlt: BigDecimal?,
+        val sdlt_currency_code: String?,
         val payment_settler: X500NameDTO,
         val latest_update_date: LocalDateTime?
 )
@@ -302,6 +304,8 @@ fun LandAgreementState.toDTO(paymentSettler: Party, latestUpdateDate: LocalDateT
         this.balance.toDecimal(),
         this.balance.token.currencyCode,
         this.titleGuarantee.name.toLowerCase(),
+        this.sdlt?.toDecimal(),
+        this.sdlt?.token?.currencyCode,
         paymentSettler.toDTO(),
         latestUpdateDate
 )
