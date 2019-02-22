@@ -125,5 +125,3 @@ task runSpringServer(type: JavaExec) {
     if (project.hasProperty("uiUrlAgreementSign")) environment "UI_URL_AGREEMENT_SIGN", findProperty('uiUrlAgreementSign')
     if (project.hasProperty("uiUrlTitleTransferred")) environment "UI_URL_TITLE_TRANSFERRED", findProperty('uiUrlTitleTransferred')
 }
-//e.g: ./gradlew runSpringServer -PserverPort=7006 -PnodeIP=192.168.249.61 -PnodePort=10003 -PnodeUsername=user1 -PnodePassword=letmein -PcaseManagementApiUrl="http://localhost:8004/v1" -uiUrlAgreementSign="http://localhost:7002/user/agreement-context?title_number=%titleNumber%"
-
